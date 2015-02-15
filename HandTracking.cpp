@@ -1,7 +1,7 @@
 //============================================================================
 // Name        : HandTracking.cpp
 // Author      : Biagio Brattoli
-// Version     : 0.1
+// Version     : 1.0
 // Copyright   :
 // Description : HandTracking in a video stream using OpenCV
 //============================================================================
