@@ -34,26 +34,29 @@ int main( int argc, char **argv ) {
 	calculateSkinColor(capture, &avgs, &mins, &maxs);
 	//cout << "(" << avg[0] << ", " << avg[1] << ", " << avg[2] << ")" << endl;
 
+	cv::Mat contour;
 	// HAND TRAKING
 	while(cv::waitKey(1)==-1){
 		capture.read(image);
 		cv::Mat imageHSV;
 		cv::cvtColor(image, imageHSV, CV_BGR2YCrCb);
-		//cv::cvtColor(image, imageHSV, CV_BGR2YCrCb);
-		//cv::GaussianBlur(imageHSV, imageHSV, cv::Size(9, 9), 0, 0);
-		//cout << "(" << (int)imageHSV.at<cv::Vec3b>(240, 320)[0] << ", " << (int)imageHSV.at<cv::Vec3b>(240, 320)[1] << ", "<< (int)imageHSV.at<cv::Vec3b>(240, 320)[2] << endl;
 
 		cv::Mat binary = segmentation(imageHSV, avgs, mins, maxs);
-		cv::imshow("binary", binary);
-		//cv::inRange(imageHSV, cv::Scalar(0, 131, 80), cv::Scalar(255, 185, 135), binary);
-		cv::Mat contour = bigComponent(binary);
+		contour = bigComponent(binary);
 
 		cv::Mat output = cv::Mat::zeros(image.rows, image.cols, image.type());
 		contour.copyTo(image, contour);
+		cv::imshow("binary", binary);
+		/*vector<cv::Vec3i> areas = getAreas();
+		for(vector<cv::Vec3i>::iterator iter = areas.begin();iter != areas.end();iter++){
+			cv::Rect rect((*iter)[0]-(*iter)[2], (*iter)[1]-(*iter)[2], (*iter)[2], (*iter)[2]);
+			cv::rectangle(image, rect, cv::Scalar(0, 0, 255), 2, 1);
+		}*/
 		cv::imshow("frame", image);
 		//cv::imshow("mask", contour);
 
 	}
+	//cv::imwrite("hand2.jpg", contour);
 	capture.release();
 
 	return 0;
@@ -64,7 +67,7 @@ cv::Mat segmentation(cv::Mat image, vector<cv::Vec3f> avg, vector<cv::Vec3b> min
 	string name[9] = {"center", "up1", "down left", "down right", "down2", "left", "right"};
 	for(uint i=0; i<avg.size(); i++){
 		cv::Mat th = thresholding(image, avg[i], mins[i], maxs[i]);
-		cv::imshow(name[i], th);
+		//cv::imshow(name[i], th);
 		cv::add(binaries, th, binaries);
 	}
 	cv::medianBlur(binaries, binaries, 15);
@@ -101,8 +104,8 @@ void calculateSkinColor(cv::VideoCapture capture, vector<cv::Vec3f> *avgs_r, vec
 		cv::Vec3b max;
 		calculateRectAverage(image, rect, &min, &max, &avg);
 		//cout << "(" << avg[0] << ", " << avg[1] << ", "<< avg[2] << endl;
-		cout << "(" << (int)min[0] << ", " << (int)min[1] << ", "<< (int)min[2] << endl;
-		cout << "(" << (int)max[0] << ", " << (int)max[1] << ", "<< (int)max[2] << endl;
+		//cout << "(" << (int)min[0] << ", " << (int)min[1] << ", "<< (int)min[2] << endl;
+		//cout << "(" << (int)max[0] << ", " << (int)max[1] << ", "<< (int)max[2] << endl;
 
 		avgs.push_back(avg);
 		mins.push_back(min);
@@ -120,11 +123,13 @@ cv::Mat getHandSample(cv::VideoCapture capture, vector<cv::Vec3i> areas){
 	cv::Mat image;
 	while(cv::waitKey(1)==-1){
 		capture.read(image);
-		cv::Mat imageRect(image);
+		cv::Mat imageRect(image.clone());
 		for(vector<cv::Vec3i>::iterator iter = areas.begin();iter != areas.end();iter++){
 			cv::Rect rect((*iter)[0]-(*iter)[2], (*iter)[1]-(*iter)[2], (*iter)[2], (*iter)[2]);
 			cv::rectangle(imageRect, rect, cv::Scalar(0, 0, 255), 2, 1);
 		}
+		cv::Mat hand = cv::imread("../src/hand.jpg");
+		hand.copyTo(imageRect, hand);
 		cv::imshow("frame", imageRect);
 	}
 
