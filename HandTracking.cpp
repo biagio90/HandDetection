@@ -37,9 +37,9 @@ int main( int argc, char **argv ) {
 	cv::Mat contour;
 	// HAND TRAKING
 	while(cv::waitKey(1)==-1){
-		capture.read(image);
+		image = getImage(capture);
 		cv::Mat imageHSV;
-		cv::cvtColor(image, imageHSV, CV_BGR2YCrCb);
+		cv::cvtColor(image, imageHSV, CV_BGR2HSV);
 
 		cv::Mat binary = segmentation(imageHSV, avgs, mins, maxs);
 		contour = bigComponent(binary);
@@ -64,7 +64,7 @@ int main( int argc, char **argv ) {
 
 cv::Mat segmentation(cv::Mat image, vector<cv::Vec3f> avg, vector<cv::Vec3b> mins, vector<cv::Vec3b> maxs) {
 	cv::Mat binaries = cv::Mat::zeros(image.rows, image.cols, CV_8UC1);
-	string name[9] = {"center", "up1", "down left", "down right", "down2", "left", "right"};
+	string name[9] = {"center", "up2", "up1", "down left", "down right", "down2", "left", "right"};
 	for(uint i=0; i<avg.size(); i++){
 		cv::Mat th = thresholding(image, avg[i], mins[i], maxs[i]);
 		//cv::imshow(name[i], th);
@@ -95,7 +95,7 @@ void calculateSkinColor(cv::VideoCapture capture, vector<cv::Vec3f> *avgs_r, vec
 	vector<cv::Vec3i> areas = getAreas();
 
 	cv::Mat image = getHandSample(capture, areas);
-	cv::cvtColor(image, image, CV_BGR2YCrCb);
+	cv::cvtColor(image, image, CV_BGR2HSV);
 
 	for(vector<cv::Vec3i>::iterator iter = areas.begin();iter != areas.end();iter++){
 		cv::Rect rect((*iter)[0]-(*iter)[2], (*iter)[1]-(*iter)[2], (*iter)[2], (*iter)[2]);
@@ -122,7 +122,7 @@ void calculateSkinColor(cv::VideoCapture capture, vector<cv::Vec3f> *avgs_r, vec
 cv::Mat getHandSample(cv::VideoCapture capture, vector<cv::Vec3i> areas){
 	cv::Mat image;
 	while(cv::waitKey(1)==-1){
-		capture.read(image);
+		image = getImage(capture);
 		cv::Mat imageRect(image.clone());
 		for(vector<cv::Vec3i>::iterator iter = areas.begin();iter != areas.end();iter++){
 			cv::Rect rect((*iter)[0]-(*iter)[2], (*iter)[1]-(*iter)[2], (*iter)[2], (*iter)[2]);
@@ -199,21 +199,23 @@ cv::Mat getImage(cv::VideoCapture capture){
 	cv::Mat image;
 	capture.read(image);
 	//cv::resize(image, image, cv::Size(240, ));
+	//cv::normalize(image, image, 0, 255, cv::NORM_MINMAX);
 	return image;
 }
 
 vector<cv::Vec3i> getAreas(){
-
+	cv::Vec2i center(320, 240);
+	int size = 20;
 	vector<cv::Vec3i> areas;
-	areas.push_back(cv::Vec3i(320, 240, 20)); //center
+	areas.push_back(cv::Vec3i(center[0], center[1], size)); //center
 	//areas.push_back(cv::Vec3i(320, 130, 20)); //up2
-	areas.push_back(cv::Vec3i(320, 350, 20)); //up1
-	//areas.push_back(cv::Vec3i(320, 180, 20)); //down1
-	areas.push_back(cv::Vec3i(280, 300, 20)); //down left
-	areas.push_back(cv::Vec3i(360, 300, 20)); //down right
-	areas.push_back(cv::Vec3i(320, 300, 20)); //down2
-	areas.push_back(cv::Vec3i(280, 240, 20)); //left
-	areas.push_back(cv::Vec3i(360, 240, 20)); //right
+	//areas.push_back(cv::Vec3i(320, 180, 20)); //up1
+	areas.push_back(cv::Vec3i(center[0], 	center[1]-40, size)); //down1
+	areas.push_back(cv::Vec3i(center[0]-40, center[1]+60, size)); //down left
+	areas.push_back(cv::Vec3i(center[0]+40, center[1]+60, size)); //down right
+	areas.push_back(cv::Vec3i(center[0], 	center[1]+60, size)); //down2
+	areas.push_back(cv::Vec3i(center[0]-40, center[1]	, size)); //left
+	areas.push_back(cv::Vec3i(center[0]+40, center[1]	, size)); //right
 
 	return areas;
 }
