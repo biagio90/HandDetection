@@ -11,6 +11,8 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #define DEFAULT_CAMERA 0
+#define ALPHA 3.0
+#define BETA  50
 
 using namespace std;
 void calculateSkinColor(cv::VideoCapture capture, vector<cv::Vec3f> *avgs_r, vector<cv::Vec3b> *mins_r, vector<cv::Vec3b> *maxs_r);
@@ -23,6 +25,7 @@ cv::Mat thresholding(cv::Mat image, cv::Vec3f avg, cv::Vec3b min, cv::Vec3b max)
 cv::Mat getImage(cv::VideoCapture capture);
 void showImage(string name, cv::Mat image);
 void showHand(cv::Mat image);
+void increaseContrast(cv::Mat image, float alpha, int beta);
 
 int main( int argc, char **argv ) {
 	cv::Mat image;
@@ -48,7 +51,6 @@ int main( int argc, char **argv ) {
 		cv::Mat output = cv::Mat::zeros(image.rows, image.cols, image.type());
 		contour.copyTo(image, contour); //draw the red contour around the hand
 		showImage("frame", image);
-
 	}
 	capture.release();
 
@@ -56,12 +58,13 @@ int main( int argc, char **argv ) {
 }
 
 cv::Mat segmentation(cv::Mat image, vector<cv::Vec3f> avg, vector<cv::Vec3b> mins, vector<cv::Vec3b> maxs) {
-	cv::Mat imageHSV;
-	cv::cvtColor(image, imageHSV, CV_BGR2HSV); //change image to HSV
-	cv::Mat binaries = cv::Mat::zeros(image.rows, image.cols, CV_8UC1);
+	cv::Mat imageHSV(image.clone());
+	increaseContrast(imageHSV, ALPHA, BETA);
+	cv::cvtColor(imageHSV, imageHSV, CV_BGR2HSV); //change image to HSV
+	cv::Mat binaries = cv::Mat::zeros(imageHSV.rows, imageHSV.cols, CV_8UC1);
 
 	for(uint i=0; i<mins.size(); i++){	//create a different binary map per each sample square
-		cv::Mat th = thresholding(image, avg[i], mins[i], maxs[i]);
+		cv::Mat th = thresholding(imageHSV, avg[i], mins[i], maxs[i]);
 		cv::add(binaries, th, binaries); //add all result in one map
 	}
 	//image processing to clean the binary map
@@ -91,6 +94,7 @@ void calculateSkinColor(cv::VideoCapture capture, vector<cv::Vec3f> *avgs_r, vec
 	vector<cv::Vec3i> areas = getAreas(); //create sample squares position
 
 	cv::Mat image = getHandSample(capture, areas); //wait until the user give the image with the hand on the sample squares
+	increaseContrast(image, ALPHA, BETA);
 	cv::cvtColor(image, image, CV_BGR2HSV);
 
 	//Calculate min and max for each sample squares
@@ -134,7 +138,7 @@ cv::Mat getHandSample(cv::VideoCapture capture, vector<cv::Vec3i> areas){
  * draw hand on the image which helps the user for the initial position
  */
 void showHand(cv::Mat image){
-	cv::Mat hand = cv::imread("../src/hand.jpg");
+	cv::Mat hand = cv::imread("hand.jpg");
 	if(hand.empty()) return;
 
 	cv::Mat th;
@@ -212,6 +216,22 @@ cv::Mat getImage(cv::VideoCapture capture){
 	capture.read(image);
 	cv::resize(image, image, cv::Size(640, 480));
 	return image;
+}
+
+void increaseContrast(cv::Mat image, float alpha, int beta) {
+
+	image.convertTo(image, -1, alpha, beta); // increase contrast by multiple each pixel for a value bigger than 1
+
+	// increase contrast by using histogram equalization on the Y channel of YCrCb color space
+/*	cv::cvtColor(image, image, CV_BGR2YCrCb);
+	vector<cv::Mat> channels(3);
+	cv::split(image, channels);
+	//for( int c = 0; c < 3; c++ ) {
+		cv::equalizeHist(channels[0], channels[0]);
+	//}
+	cv::merge(channels, image);
+	cv::cvtColor(image, image, CV_YCrCb2BGR);
+*/
 }
 
 void showImage(string name, cv::Mat image){
